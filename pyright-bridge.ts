@@ -30,10 +30,6 @@ function parseArgs() {
     return parsed
 }
 
-// Production-ready configuration
-// Usage: node index.js --port <PORT> --bot-root <BOT_ROOT> --jesse-root <JESSE_ROOT>
-// Example: node index.js --port 9011 --bot-root /home/king/jesse/jesse-ai --jesse-root /home/king/jesse/jesse-ai/jesse
-
 interface BridgeConfig {
     port: number
     botRoot: string
@@ -44,20 +40,33 @@ interface BridgeConfig {
 function loadConfig(): BridgeConfig {
     const args = parseArgs()
 
+    // Default values
+    const DEFAULT_PORT = 9011
+    // Go two levels up from script location (server/pyright-lsp-bridge -> project root)
+    const DEFAULT_BOT_ROOT = join(__dirname, '..', '..')
+    const DEFAULT_JESSE_ROOT = join(DEFAULT_BOT_ROOT, 'src')
+
     return {
-        port: Number(args['port']),
-        botRoot: args['bot-root'],
-        jesseRoot: args['jesse-root'],
+        port: Number(args['port']) || DEFAULT_PORT,
+        botRoot: args['bot-root'] || DEFAULT_BOT_ROOT,
+        jesseRoot: args['jesse-root'] || DEFAULT_JESSE_ROOT,
         pyrightPath: join(__dirname, 'node_modules/pyright/dist/pyright-langserver.js')
     }
-}
-
-function validateConfig(config: BridgeConfig): void {
+}function validateConfig(config: BridgeConfig): void {
     if (!config.port || !config.botRoot || !config.jesseRoot) {
-        console.error('Error: --port and --bot-root and --jesse-root are required')
-        console.error('Usage: npx tsx index.ts --port <PORT> --bot-root <BOT_ROOT> --jesse-root <JESSE_ROOT>')
+        console.error('Error: Invalid configuration')
+        console.error('Usage: npx tsx index.ts [--port <PORT>] [--bot-root <BOT_ROOT>] [--jesse-root <JESSE_ROOT>]')
+        console.error('Defaults:')
+        console.error(`  --port: 9011`)
+        console.error(`  --bot-root: ${process.cwd()}`)
+        console.error(`  --jesse-root: ${join(process.cwd(), 'src')}`)
         process.exit(1)
     }
+    
+    console.log('Configuration loaded:')
+    console.log(`  Port: ${config.port}`)
+    console.log(`  Bot root: ${config.botRoot}`)
+    console.log(`  Jesse root: ${config.jesseRoot}`)
 }
 
 // Deploy pyrightconfig.json to the workspace on startup
