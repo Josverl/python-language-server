@@ -1,15 +1,33 @@
 {
-  "reportMissingImports": true,
-  "reportMissingTypeStubs": false,
-  "extraPaths": [
-    "${JESSE_ROOT}",
-  ],
-  "executionEnvironments": [
-    {
-      "root": "${BOT_ROOT}",
-      "extraPaths": [
-        "${JESSE_ROOT}",
-      ]
-    }
-  ]
+    "reportMissingImports": true,
+    "reportMissingTypeStubs": false,
+    // pyright options for MicroPython
+    "reportMissingModuleSource": "none",
+    "typeCheckingMode": "standard",
+    // use custom typeshed for MicroPython 
+    "typeshedPath": "./typings",
+    // and for stdlib replacement
+    "stubPath": "./typings",
+    // standard locations
+    "include": [
+        "src",
+    ],
+    "extraPaths": [
+        "src/lib"
+        //     "${JESSE_ROOT}",
+    ],
+    "executionEnvironments": [
+        {
+            "root": ".",
+            "extraPaths": [
+                "src",
+            ]
+        },
+        {
+            "root": "${BOT_ROOT}",
+            "extraPaths": [
+                "${JESSE_ROOT}",
+            ]
+        }
+    ]
 }
