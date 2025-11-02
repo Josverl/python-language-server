@@ -1,12 +1,11 @@
 import { spawn } from 'child_process'
-import { WebSocketServer } from 'ws'
-import { toSocket, WebSocketMessageReader, WebSocketMessageWriter } from 'vscode-ws-jsonrpc'
-import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js'
-import { readFileSync, writeFileSync, existsSync } from 'fs'
+import 'dotenv/config'
+import { existsSync, readFileSync, writeFileSync } from 'fs'
 import path, { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
-
-import 'dotenv/config'
+import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js'
+import { toSocket, WebSocketMessageReader, WebSocketMessageWriter } from 'vscode-ws-jsonrpc'
+import { WebSocketServer } from 'ws'
 
 // Get the directory where bundle.js is located (not cwd)
 const __filename = fileURLToPath(import.meta.url)
@@ -32,8 +31,8 @@ function parseArgs() {
 }
 
 // Production-ready configuration
-// Usage: node index.js --port <PORT> --project-root <PROJECT_ROOT> --jesse-relative-path <JESSE_PATH> --bot-relative-path <BOT_PATH>
-// Example: node index.js --port 9011 --project-root /home/king/jesse/jesse-ai --jesse-relative-path jesse/jesse --bot-relative-path jesse-bot
+// Usage: node index.js --port <PORT> --bot-root <BOT_ROOT> --jesse-root <JESSE_ROOT>
+// Example: node index.js --port 9011 --bot-root /home/king/jesse/jesse-ai --jesse-root /home/king/jesse/jesse-ai/jesse
 const args = parseArgs()
 const PYRIGHT_WS_PORT = Number(args['port'])
 const BOT_ROOT = args['bot-root']
@@ -50,10 +49,15 @@ function deployPyrightConfig() {
         return
     }
     
-    // Read template and replace variables
+    // Read template and replace variables with normalized paths
     let config = readFileSync(templatePath, 'utf-8')
-    config = config.replace(/\$\{BOT_ROOT\}/g, BOT_ROOT)
-    config = config.replace(/\$\{JESSE_ROOT\}/g, JESSE_ROOT || '')
+    
+    // Normalize paths to use forward slashes for cross-platform compatibility
+    // Pyright expects forward slashes even on Windows
+    const normalizePathForPyright = (p: string) => p.replace(/\\/g, '/')
+    
+    config = config.replace(/\$\{BOT_ROOT\}/g, normalizePathForPyright(BOT_ROOT))
+    config = config.replace(/\$\{JESSE_ROOT\}/g, normalizePathForPyright(JESSE_ROOT || ''))
     
     // Write to workspace
     writeFileSync(targetPath, config)
@@ -107,11 +111,14 @@ export function startPyrightBridge() {
         if (msg.method === 'initialize') {
                 console.log('🔧 Auto-injecting project configuration')
                 
+                // Normalize path for file:// URI (must use forward slashes)
+                const normalizedRoot = BOT_ROOT.replace(/\\/g, '/')
+                
                 msg.params = msg.params || {}
-                msg.params.rootUri = `file://${BOT_ROOT}`
+                msg.params.rootUri = `file:///${normalizedRoot}`
                 msg.params.workspaceFolders = [
                 {
-                    uri: `file://${BOT_ROOT}`,
+                    uri: `file:///${normalizedRoot}`,
                     name: 'jesse-ai'
                 }
                 ]
@@ -125,7 +132,8 @@ export function startPyrightBridge() {
             
             // If not already absolute, make it absolute
             if (!uri.startsWith('file://')) {
-                msg.params.textDocument.uri = `file://${path.join(BOT_ROOT, uri)}`
+                const normalizedPath = path.join(BOT_ROOT, uri).replace(/\\/g, '/')
+                msg.params.textDocument.uri = `file:///${normalizedPath}`
                 }
             }
 
