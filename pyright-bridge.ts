@@ -15,7 +15,7 @@ const __dirname = dirname(__filename)
 function parseArgs() {
     const args = process.argv.slice(2)
     const parsed: Record<string, string> = {}
-    
+
     for (let i = 0; i < args.length; i++) {
         if (args[i].startsWith('--')) {
             const key = args[i].slice(2)
@@ -26,71 +26,89 @@ function parseArgs() {
             }
         }
     }
-    
+
     return parsed
 }
 
 // Production-ready configuration
 // Usage: node index.js --port <PORT> --bot-root <BOT_ROOT> --jesse-root <JESSE_ROOT>
 // Example: node index.js --port 9011 --bot-root /home/king/jesse/jesse-ai --jesse-root /home/king/jesse/jesse-ai/jesse
-const args = parseArgs()
-const PYRIGHT_WS_PORT = Number(args['port'])
-const BOT_ROOT = args['bot-root']
-const JESSE_ROOT = args['jesse-root']
-const PYRIGHT_PATH = join(__dirname, 'node_modules/pyright/dist/pyright-langserver.js')
 
-// Deploy pyrightconfig.json to the Jesse workspace on startup
-function deployPyrightConfig() {
+interface BridgeConfig {
+    port: number
+    botRoot: string
+    jesseRoot: string
+    pyrightPath: string
+}
+
+function loadConfig(): BridgeConfig {
+    const args = parseArgs()
+
+    return {
+        port: Number(args['port']),
+        botRoot: args['bot-root'],
+        jesseRoot: args['jesse-root'],
+        pyrightPath: join(__dirname, 'node_modules/pyright/dist/pyright-langserver.js')
+    }
+}
+
+function validateConfig(config: BridgeConfig): void {
+    if (!config.port || !config.botRoot || !config.jesseRoot) {
+        console.error('Error: --port and --bot-root and --jesse-root are required')
+        console.error('Usage: npx tsx index.ts --port <PORT> --bot-root <BOT_ROOT> --jesse-root <JESSE_ROOT>')
+        process.exit(1)
+    }
+}
+
+// Deploy pyrightconfig.json to the workspace on startup
+function deployPyrightConfig(config: BridgeConfig): void {
     const templatePath = join(__dirname, 'pyrightconfig.json')
-    const targetPath = join(BOT_ROOT, 'pyrightconfig.json')
-    
+    const targetPath = join(config.botRoot, 'pyrightconfig.json')
+
     if (!existsSync(templatePath)) {
         console.warn(`Warning: No pyrightconfig.json template found at ${templatePath}`)
         return
     }
-    
+
     // Read template and replace variables with normalized paths
-    let config = readFileSync(templatePath, 'utf-8')
-    
+    let configContent = readFileSync(templatePath, 'utf-8')
+
     // Normalize paths to use forward slashes for cross-platform compatibility
     // Pyright expects forward slashes even on Windows
     const normalizePathForPyright = (p: string) => p.replace(/\\/g, '/')
-    
-    config = config.replace(/\$\{BOT_ROOT\}/g, normalizePathForPyright(BOT_ROOT))
-    config = config.replace(/\$\{JESSE_ROOT\}/g, normalizePathForPyright(JESSE_ROOT || ''))
-    
+
+    configContent = configContent.replace(/\$\{BOT_ROOT\}/g, normalizePathForPyright(config.botRoot))
+    configContent = configContent.replace(/\$\{JESSE_ROOT\}/g, normalizePathForPyright(config.jesseRoot || ''))
+
     // Write to workspace
-    writeFileSync(targetPath, config)
+    writeFileSync(targetPath, configContent)
     console.log(`Deployed pyrightconfig.json to ${targetPath}`)
 }
 
+function normalizePathForUri(pathStr: string): string {
+    return pathStr.replace(/\\/g, '/')
+}
 
+export function startPyrightBridge(): void {
+    const config = loadConfig()
+    validateConfig(config)
 
-export function startPyrightBridge() {
-        
+    // Deploy config before starting the server
+    deployPyrightConfig(config)
 
-        if (!PYRIGHT_WS_PORT || !BOT_ROOT || !JESSE_ROOT) {
-            console.error('Error: --port and --bot-root and --jesse-root are required')
-            console.error('Usage: npx tsx index.ts --port <PORT> --bot-root <BOT_ROOT> --jesse-root <JESSE_ROOT>')
-            process.exit(1)
-        }
+    const wss = new WebSocketServer({ port: config.port, path: '/lsp' })
+    console.log(`Pyright WS bridge running on ws://localhost:${config.port}/lsp`)
+    console.log(`Execution root: ${config.botRoot}`)
 
-        // Deploy config before starting the server
-        deployPyrightConfig()
-        
-        const wss = new WebSocketServer({ port: PYRIGHT_WS_PORT, path: '/lsp'})
-        console.log(`Pyright WS bridge running on ws://localhost:${PYRIGHT_WS_PORT}/lsp`)
-        console.log(`Execution root: ${BOT_ROOT}`)
-
-        wss.on('connection', (ws) => {
+    wss.on('connection', (ws) => {
         console.log('Client connected, spawning Pyright...')
 
         // Spawn a new Pyright instance for THIS connection
         // Set cwd to the project root so Pyright can find pyrightconfig.json and .venv
-        console.log(`Spawning Pyright with cwd: ${BOT_ROOT}`)
+        console.log(`Spawning Pyright with cwd: ${config.botRoot}`)
 
-        const pyright = spawn('node', [PYRIGHT_PATH, '--stdio'], {
-            cwd: BOT_ROOT,
+        const pyright = spawn('node', [config.pyrightPath, '--stdio'], {
+            cwd: config.botRoot,
             env: process.env
         })
 
@@ -106,34 +124,34 @@ export function startPyrightBridge() {
         // pipe WS -> Pyright
         wsReader.listen((msg: any) => {
             console.log('→ Client to Pyright:', JSON.stringify(msg).substring(0, 200))
-            
+
             // Auto-inject rootUri in initialize request
-        if (msg.method === 'initialize') {
+            if (msg.method === 'initialize') {
                 console.log('🔧 Auto-injecting project configuration')
-                
+
                 // Normalize path for file:// URI (must use forward slashes)
-                const normalizedRoot = BOT_ROOT.replace(/\\/g, '/')
-                
+                const normalizedRoot = normalizePathForUri(config.botRoot)
+
                 msg.params = msg.params || {}
                 msg.params.rootUri = `file:///${normalizedRoot}`
                 msg.params.workspaceFolders = [
-                {
-                    uri: `file:///${normalizedRoot}`,
-                    name: 'jesse-ai'
-                }
+                    {
+                        uri: `file:///${normalizedRoot}`,
+                        name: 'mp_codemirror'
+                    }
                 ]
-                
+
                 console.log('✓ rootUri:', msg.params.rootUri)
             }
-      
-        // Auto-convert relative file URIs to absolute
-        if (msg.params?.textDocument?.uri) {
-            const uri = msg.params.textDocument.uri
-            
-            // If not already absolute, make it absolute
-            if (!uri.startsWith('file://')) {
-                const normalizedPath = path.join(BOT_ROOT, uri).replace(/\\/g, '/')
-                msg.params.textDocument.uri = `file:///${normalizedPath}`
+
+            // Auto-convert relative file URIs to absolute
+            if (msg.params?.textDocument?.uri) {
+                const uri = msg.params.textDocument.uri
+
+                // If not already absolute, make it absolute
+                if (!uri.startsWith('file://')) {
+                    const normalizedPath = normalizePathForUri(path.join(config.botRoot, uri))
+                    msg.params.textDocument.uri = `file:///${normalizedPath}`
                 }
             }
 
