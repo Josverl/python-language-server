@@ -30,7 +30,7 @@ cd /Users/salehmir/Codes/jesse/dev-jesse/python-language-server
 npm install
 
 # Start the server in development mode
-npm start -- --port 9011 --project-root /path/to/project --jesse-relative-path jesse_folder_name --bot-relative-path jesse-bot_folder_name
+npm start -- --port 9011 --bot-root /path/to/project --jesse-root /path/to/project/src
 ```
 
 ### Building for Production
@@ -72,9 +72,8 @@ Outputs:
 - `pyrightconfig.json` - Pyright language server configuration
 - Command-line arguments:
   - `--port` - WebSocket server port (default: 9011)
-  - `--project-root` - Root directory of the Python project
-  - `--jesse-relative-path` - Relative path to Jesse framework folder
-  - `--bot-relative-path` - Relative path to Jesse bot folder
+  - `--bot-root` - Root directory of the Python project (where pyrightconfig.json is deployed)
+  - `--jesse-root` - Directory containing Python source files
 
 ### Debugging
 - Use `console.log()` for debugging in TypeScript/JavaScript code
@@ -109,14 +108,14 @@ After building, the output packages are ready for deployment:
 ```bash
 tar -xzf linux-x64.tar.gz
 cd linux-x64
-./start.sh --port 9011 --project-root /path/to/project --jesse-relative-path jesse_folder_name --bot-relative-path jesse-bot_folder_name
+./start.sh --port 9011 --bot-root /path/to/project --jesse-root /path/to/project/src
 ```
 
 **Windows:**
 ```cmd
 REM Extract win32-x64.zip
 cd win32-x64
-start.bat --port 9011 --project-root C:\path\to\project --jesse-relative-path jesse_folder_name --bot-relative-path jesse-bot_folder_name
+start.bat --port 9011 --bot-root C:\path\to\project --jesse-root C:\path\to\project\src
 ```
 
 ## File Structure
