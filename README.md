@@ -113,6 +113,18 @@ Messages are translated between WebSocket and the Language Server Protocol, enab
 - `build-all.sh` - Build script for all platforms
 - `output/` - Build output directory (generated)
 
+## Research & Documentation
+
+For insights into how similar projects handle Pyright execution, see:
+- [RESEARCH.md](./RESEARCH.md) - Comprehensive analysis of pyright-playground architecture
+- [RESEARCH_SUMMARY.md](./RESEARCH_SUMMARY.md) - Quick reference guide
+
+These documents explain:
+- How pyright-playground actually works (server-based, not browser-native)
+- Comparison with python-language-server architecture
+- Alternative approaches (basedpyright for true browser execution)
+- Recommendations for potential enhancements
+
 ## License
 
 This project is part of the Jesse ecosystem.
