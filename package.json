@@ -5,7 +5,8 @@
   "type": "module",
   "main": "index.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "tsx tests/mcp-connection-test.ts",
+    "test:mcp": "tsx tests/mcp-connection-test.ts",
     "start": "tsx index.ts",
     "build": "./build.sh"
   },
@@ -16,13 +17,14 @@
   "dependencies": {
     "dotenv": "^17.2.3",
     "pyright": "^1.1.407",
-    "vscode-ws-jsonrpc": "^3.5.0",
-    "ws": "^8.18.3"
+    "vscode-ws-jsonrpc": "^3.5.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@types/node": "^20.11.0",
     "@types/ws": "^8.18.1",
     "esbuild": "^0.19.0",
-    "tsx": "^4.20.6"
+    "tsx": "^4.20.6",
+    "ws": "^8.18.3"
   }
 }

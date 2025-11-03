@@ -143,3 +143,6 @@ build/
 output/
 *.tar.gz
 *.zip
+
+# Test workspace
+tests/test-workspace/

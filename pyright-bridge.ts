@@ -140,12 +140,17 @@ export function startPyrightBridge(): void {
 
                 // Normalize path for file:// URI (must use forward slashes)
                 const normalizedRoot = normalizePathForUri(config.botRoot)
+                
+                // Ensure proper file:// URI format (avoid double slashes on Unix paths)
+                const fileUri = normalizedRoot.startsWith('/') 
+                    ? `file://${normalizedRoot}` 
+                    : `file:///${normalizedRoot}`;
 
                 msg.params = msg.params || {}
-                msg.params.rootUri = `file:///${normalizedRoot}`
+                msg.params.rootUri = fileUri
                 msg.params.workspaceFolders = [
                     {
-                        uri: `file:///${normalizedRoot}`,
+                        uri: fileUri,
                         name: 'mp_codemirror'
                     }
                 ]
@@ -160,7 +165,9 @@ export function startPyrightBridge(): void {
                 // If not already absolute, make it absolute
                 if (!uri.startsWith('file://')) {
                     const normalizedPath = normalizePathForUri(path.join(config.botRoot, uri))
-                    msg.params.textDocument.uri = `file:///${normalizedPath}`
+                    msg.params.textDocument.uri = normalizedPath.startsWith('/')
+                        ? `file://${normalizedPath}`
+                        : `file:///${normalizedPath}`;
                 }
             }
 
