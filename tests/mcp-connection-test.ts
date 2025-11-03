@@ -13,6 +13,12 @@ import { join } from 'path';
  * 4. Firewall settings allow proper communication
  */
 
+// Test constants
+const SERVER_READY_MESSAGE = 'Pyright WS bridge running';
+const SERVER_INIT_DELAY_MS = 1000;
+const SERVER_SHUTDOWN_DELAY_MS = 1000;
+const LOG_MESSAGE_TRUNCATE_LENGTH = 200;
+
 interface TestConfig {
     port: number;
     timeout: number;
@@ -85,10 +91,10 @@ class Strategy:
                 output += data.toString();
                 console.log(`[SERVER] ${data.toString().trim()}`);
                 
-                if (output.includes('Pyright WS bridge running')) {
+                if (output.includes(SERVER_READY_MESSAGE)) {
                     clearTimeout(timeout);
                     console.log('✅ Server started successfully');
-                    setTimeout(resolve, 1000); // Give it a moment to fully initialize
+                    setTimeout(resolve, SERVER_INIT_DELAY_MS); // Give it a moment to fully initialize
                 }
             });
 
@@ -167,7 +173,7 @@ class Strategy:
             ws.on('message', (data) => {
                 messageReceived = true;
                 const response = JSON.parse(data.toString());
-                console.log('📨 Received LSP response:', JSON.stringify(response).substring(0, 200));
+                console.log('📨 Received LSP response:', JSON.stringify(response).substring(0, LOG_MESSAGE_TRUNCATE_LENGTH));
                 
                 if (response.id === 1 && response.result) {
                     clearTimeout(timeout);
@@ -202,7 +208,7 @@ class Strategy:
             this.server.kill('SIGTERM');
             
             // Give it time to shut down gracefully
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, SERVER_SHUTDOWN_DELAY_MS));
             
             if (this.server.exitCode === null) {
                 this.server.kill('SIGKILL');
