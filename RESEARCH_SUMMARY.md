@@ -49,11 +49,16 @@ Client
 
 There IS a way to run Pyright in the browser natively:
 
-**BasedPyright** - A browser-compatible build of Pyright
-- Uses WebAssembly and modern JS bundling
-- Runs entirely client-side
-- Available as npm package
-- NOT used by pyright-playground
+**BasedPyright (browser edition)** - A TRUE browser-native implementation
+- ✅ Uses Web Workers and browser-compatible JavaScript bundles
+- ✅ Implements complete LSP server in the browser
+- ✅ Runs entirely client-side with virtual file system
+- ✅ Available as `browser-basedpyright` npm package
+- ✅ Used by https://basedpyright.com/ playground
+- ❌ NOT WebAssembly (uses bundled JavaScript/TypeScript)
+- ❌ NOT what pyright-playground uses
+
+**See [BASEDPYRIGHT_BROWSER_RESEARCH.md](./BASEDPYRIGHT_BROWSER_RESEARCH.md) for complete implementation details and code examples.**
 
 ## Recommendations for python-language-server
 

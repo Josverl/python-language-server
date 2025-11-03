@@ -115,46 +115,63 @@
 │  │  • Syntax highlighting                                │   │
 │  └────────────────┬─────────────────────────────────────┘   │
 │                   │                                           │
-│                   │ In-Memory Function Calls                  │
+│                   │ LSP JSON-RPC Messages                     │
+│                   │ BrowserMessageReader/Writer               │
 │                   ▼                                           │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │  BasedPyright (Browser Build)                        │   │
-│  │  • Pyright compiled for browser                      │   │
-│  │  • WebAssembly + JavaScript bundle                   │   │
-│  │  • Virtual file system                               │   │
-│  │  • All processing client-side                        │   │
-│  │  • No network communication needed                   │   │
-│  └──────────────────────────────────────────────────────┘   │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  Foreground Web Worker (pyright.worker.js)            │  │
+│  │  • PyrightBrowserServer (LSP implementation)          │  │
+│  │  • Virtual file system (TestFileSystem)               │  │
+│  │  • Manages background workers via MessageChannel     │  │
+│  │  • Loaded from CDN (jsdelivr)                         │  │
+│  └────────────────┬─────────────────────────────────────┘   │
+│                   │                                           │
+│                   │ MessageChannel (MessagePort)              │
+│                   ▼                                           │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  Background Web Workers (multiple, parallel)          │  │
+│  │  • BrowserBackgroundAnalysisRunner                    │  │
+│  │  • Perform type analysis                              │  │
+│  │  • JavaScript execution (NOT WebAssembly)             │  │
+│  │  • Files stored in memory (virtual fs)                │  │
+│  └────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 
          ⚠️  NO SERVER COMPONENT REQUIRED ⚠️
+    ALL TYPE CHECKING HAPPENS IN BROWSER WEB WORKERS
 ```
 
 **Key Points:**
 - ✅ Pyright DOES run entirely in the browser
+- ✅ Uses Web Workers (NOT WebAssembly)
+- ✅ Full LSP server implementation in JavaScript
+- ✅ Virtual file system (TestFileSystem) in memory
 - ✅ No server needed
 - ✅ Complete privacy (code never leaves browser)
 - ✅ Offline capability
-- ❌ NOT used by pyright-playground
-- ❌ Different project (separate implementation)
-- ❌ May have performance/feature limitations
+- ✅ Available as `browser-basedpyright` npm package
+- ✅ Live demo: https://basedpyright.com/
+- ❌ NOT used by pyright-playground (different project)
 
 ---
 
 ## Side-by-Side Comparison
 
-| Feature | Pyright-Playground | python-language-server | BasedPyright |
-|---------|-------------------|----------------------|--------------|
-| **Browser Execution** | ❌ No | ❌ No | ✅ Yes |
+| Feature | Pyright-Playground | python-language-server | BasedPyright (Browser) |
+|---------|-------------------|----------------------|---------------------|
+| **Browser Execution** | ❌ No | ❌ No | ✅ Yes (Web Workers) |
 | **Server Required** | ✅ Express.js | ✅ WebSocket Bridge | ❌ None |
-| **Communication** | HTTP REST | WebSocket | In-memory |
-| **Process Model** | Pooled sessions | Single process | Browser thread |
-| **Deployment** | Cloud (Azure) | Standalone/embedded | Static hosting |
-| **Node.js** | Server-side | Bundled runtime | Browser bundle |
+| **Communication** | HTTP REST | WebSocket | LSP (BrowserMessage) |
+| **Process Model** | Pooled sessions | Single process | Web Workers |
+| **Deployment** | Cloud (Azure) | Standalone/embedded | Static files/CDN |
+| **Runtime** | Node.js (server) | Bundled Node.js | Browser JavaScript |
+| **File System** | Real fs (server) | Real fs (server) | Virtual (memory) |
 | **Privacy** | Code on server | Code on server | Code in browser |
 | **Latency** | Network + compute | Local compute | Browser compute |
 | **Resource Usage** | Server resources | Local resources | Browser resources |
-| **Offline Support** | ❌ No | ✅ Yes (with local) | ✅ Yes |
+| **Offline Support** | ❌ No | ✅ Yes (with local) | ✅ Yes (after load) |
+| **Package** | Standard pyright | Standard pyright | browser-basedpyright |
+| **Technology** | Node.js LSP | Node.js LSP | JavaScript LSP |
 
 ---
 
@@ -167,9 +184,15 @@
 > Pyright-playground uses a traditional client-server architecture. The browser only handles UI (Monaco Editor) and makes HTTP requests to a Node.js server that runs Pyright.
 
 **What Actually Runs in Browser:**
-1. **Pyright-playground:** Monaco Editor UI + HTTP client
-2. **python-language-server:** CodeMirror Editor + WebSocket client  
-3. **BasedPyright:** Entire Pyright type checker (different project)
+1. **Pyright-playground:** Monaco Editor UI + HTTP client only
+2. **python-language-server:** CodeMirror Editor + WebSocket client only
+3. **BasedPyright (browser edition):** Complete Pyright LSP server in Web Workers + UI
+
+**The Correct Understanding:**
+- Pyright-playground and python-language-server both run Pyright on a server
+- BasedPyright has a special `browser-basedpyright` package that runs entirely in the browser
+- The browser edition uses Web Workers and JavaScript (NOT WebAssembly)
+- See [BASEDPYRIGHT_BROWSER_RESEARCH.md](./BASEDPYRIGHT_BROWSER_RESEARCH.md) for complete details
 
 ---
 

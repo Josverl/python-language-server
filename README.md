@@ -116,13 +116,22 @@ Messages are translated between WebSocket and the Language Server Protocol, enab
 ## Research & Documentation
 
 For insights into how similar projects handle Pyright execution, see:
+
+### Server-Based Implementations
 - [RESEARCH.md](./RESEARCH.md) - Comprehensive analysis of pyright-playground architecture
 - [RESEARCH_SUMMARY.md](./RESEARCH_SUMMARY.md) - Quick reference guide
 
+### Browser-Native Implementation
+- [BASEDPYRIGHT_BROWSER_RESEARCH.md](./BASEDPYRIGHT_BROWSER_RESEARCH.md) - **NEW:** Detailed analysis of basedpyright's true browser execution
+
+### Visual Comparisons
+- [ARCHITECTURE_DIAGRAMS.md](./ARCHITECTURE_DIAGRAMS.md) - Visual architecture diagrams
+
 These documents explain:
 - How pyright-playground actually works (server-based, not browser-native)
+- **How basedpyright runs entirely in the browser using Web Workers and LSP**
 - Comparison with python-language-server architecture
-- Alternative approaches (basedpyright for true browser execution)
+- Complete implementation examples and integration guides
 - Recommendations for potential enhancements
 
 ## License
