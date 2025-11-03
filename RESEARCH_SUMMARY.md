@@ -81,6 +81,10 @@ The WebSocket approach is better for continuous editing sessions in Jesse dashbo
 - **Main learnings** are about session management, not browser execution
 - **BasedPyright exists** if true browser execution is needed, but it's a separate project
 
+## Visual Architecture Comparison
+
+See [ARCHITECTURE_DIAGRAMS.md](./ARCHITECTURE_DIAGRAMS.md) for visual diagrams comparing all three architectures side-by-side.
+
 ## Full Details
 
 See [RESEARCH.md](./RESEARCH.md) for complete analysis, code examples, and detailed comparisons.
