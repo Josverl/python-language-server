@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeMirror with Pyright LSP - Hover Tooltips Demo</title>
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- CodeMirror 6 -->
+    <script type="module">
+        import { EditorView, basicSetup } from 'https://cdn.jsdelivr.net/npm/codemirror@6.0.1/dist/index.js';
+        import { python } from 'https://cdn.jsdelivr.net/npm/@codemirror/lang-python@6.1.6/dist/index.js';
+        import { hoverTooltip } from 'https://cdn.jsdelivr.net/npm/@codemirror/view@6.26.3/dist/index.js';
+        
+        // Make CodeMirror available globally
+        window.CodeMirror = { EditorView, basicSetup, python, hoverTooltip };
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>CodeMirror with Pyright LSP</h1>
+            <p>Hover Tooltips Demo - Python Type Information & Documentation</p>
+        </div>
+        
+        <div class="status-bar">
+            <div class="status-indicator" id="statusIndicator"></div>
+            <span class="status-text" id="statusText">Disconnected</span>
+        </div>
+        
+        <div id="editor"></div>
+        
+        <div class="controls">
+            <h3>Controls</h3>
+            <button id="connectBtn">Connect to LSP Server</button>
+            <button id="disconnectBtn" disabled>Disconnect</button>
+        </div>
+        
+        <div class="info-panel">
+            <h3>Instructions</h3>
+            <ul>
+                <li>Make sure the Pyright WebSocket bridge is running on <code>ws://localhost:9011/lsp</code></li>
+                <li>Click "Connect to LSP Server" to establish the connection</li>
+                <li>Hover over Python code to see type information and documentation</li>
+                <li>The tooltips show function signatures, variable types, and docstrings</li>
+                <li>Try editing the code and hover over different elements to see real-time type checking</li>
+            </ul>
+            
+            <h3>Sample Python Code</h3>
+            <p>The editor is pre-loaded with sample code demonstrating various Python features that work well with hover tooltips.</p>
+        </div>
+    </div>
+    
+    <!-- Load our custom scripts -->
+    <script src="client.js"></script>
+    <script src="hover.js"></script>
+    <script type="module">
+        // Sample Python code for demonstration
+        const sampleCode = `"""
+Sample Python module demonstrating LSP hover tooltips
+Hover over functions, variables, and imports to see type information
+"""
+
+from typing import List, Dict, Optional
+import math
+
+
+def calculate_area(radius: float) -> float:
+    """
+    Calculate the area of a circle.
+    
+    Args:
+        radius: The radius of the circle
+        
+    Returns:
+        The area of the circle
+    """
+    return math.pi * radius ** 2
+
+
+def process_data(items: List[int], multiplier: int = 2) -> List[int]:
+    """
+    Process a list of integers by multiplying each by a given value.
+    
+    Args:
+        items: List of integers to process
+        multiplier: Value to multiply each item by (default: 2)
+        
+    Returns:
+        A new list with processed values
+    """
+    return [item * multiplier for item in items]
+
+
+class DataProcessor:
+    """
+    A class for processing data with various methods.
+    """
+    
+    def __init__(self, name: str, config: Optional[Dict[str, any]] = None):
+        """
+        Initialize the DataProcessor.
+        
+        Args:
+            name: Name of the processor
+            config: Optional configuration dictionary
+        """
+        self.name = name
+        self.config = config or {}
+    
+    def transform(self, data: List[float]) -> List[float]:
+        """
+        Transform data using the processor's configuration.
+        
+        Args:
+            data: List of float values to transform
+            
+        Returns:
+            Transformed data
+        """
+        factor = self.config.get('factor', 1.0)
+        return [x * factor for x in data]
+
+
+# Example usage
+if __name__ == "__main__":
+    # Try hovering over these variables and function calls
+    circle_area = calculate_area(5.0)
+    print(f"Area: {circle_area}")
+    
+    numbers = [1, 2, 3, 4, 5]
+    processed = process_data(numbers, 3)
+    print(f"Processed: {processed}")
+    
+    processor = DataProcessor("MyProcessor", {"factor": 2.5})
+    result = processor.transform([1.0, 2.0, 3.0])
+    print(f"Result: {result}")
+`;
+
+        // Initialize the application
+        let editor;
+        let lspClient;
+        let documentVersion = 0;
+        const documentUri = 'file:///demo.py';
+        
+        async function initializeEditor() {
+            const { EditorView, basicSetup, python, hoverTooltip } = window.CodeMirror;
+            
+            // Create LSP client
+            lspClient = new LSPClient('ws://localhost:9011/lsp');
+            
+            // Create editor extensions
+            const extensions = [
+                basicSetup,
+                python(),
+            ];
+            
+            // Create the editor
+            editor = new EditorView({
+                doc: sampleCode,
+                extensions: extensions,
+                parent: document.getElementById('editor')
+            });
+            
+            console.log('Editor initialized');
+        }
+        
+        async function connectToLSP() {
+            try {
+                updateStatus('connecting', 'Connecting...');
+                
+                await lspClient.connect();
+                
+                // Open the document with the LSP server
+                lspClient.openDocument(
+                    documentUri,
+                    'python',
+                    ++documentVersion,
+                    editor.state.doc.toString()
+                );
+                
+                // Add hover extension after connection
+                const hoverExtension = createHoverExtension(lspClient, documentUri);
+                editor.dispatch({
+                    effects: window.CodeMirror.StateEffect.appendConfig.of(hoverExtension)
+                });
+                
+                // Listen for document changes
+                const updateListener = window.CodeMirror.EditorView.updateListener.of((update) => {
+                    if (update.docChanged) {
+                        lspClient.changeDocument(
+                            documentUri,
+                            ++documentVersion,
+                            [{
+                                text: update.state.doc.toString()
+                            }]
+                        );
+                    }
+                });
+                
+                editor.dispatch({
+                    effects: window.CodeMirror.StateEffect.appendConfig.of(updateListener)
+                });
+                
+                updateStatus('connected', 'Connected to LSP Server');
+                document.getElementById('connectBtn').disabled = true;
+                document.getElementById('disconnectBtn').disabled = false;
+                
+                console.log('Connected to LSP server');
+            } catch (error) {
+                console.error('Failed to connect:', error);
+                updateStatus('disconnected', 'Connection failed: ' + error.message);
+                alert('Failed to connect to LSP server. Make sure it is running on ws://localhost:9011/lsp');
+            }
+        }
+        
+        function disconnectFromLSP() {
+            if (lspClient) {
+                lspClient.closeDocument(documentUri);
+                lspClient.disconnect();
+            }
+            
+            updateStatus('disconnected', 'Disconnected');
+            document.getElementById('connectBtn').disabled = false;
+            document.getElementById('disconnectBtn').disabled = true;
+            
+            console.log('Disconnected from LSP server');
+        }
+        
+        function updateStatus(state, text) {
+            const indicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            
+            indicator.className = 'status-indicator';
+            if (state === 'connected') {
+                indicator.classList.add('connected');
+            }
+            
+            statusText.textContent = text;
+        }
+        
+        // Set up event listeners
+        document.getElementById('connectBtn').addEventListener('click', connectToLSP);
+        document.getElementById('disconnectBtn').addEventListener('click', disconnectFromLSP);
+        
+        // Initialize editor on page load
+        initializeEditor().catch(console.error);
+    </script>
+</body>
+</html>
