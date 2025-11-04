@@ -30,7 +30,7 @@ python-language-server/
 ├── demos/
 │   ├── shared/                    # Shared components
 │   │   ├── editor/
-│   │   │   ├── MonacoEditor.ts   # Monaco editor wrapper
+│   │   │   ├── CodeMirrorEditor.ts   # CodeMirror editor wrapper
 │   │   │   └── DiagnosticsPanel.ts
 │   │   ├── stubs/
 │   │   │   ├── StubManager.ts     # Stub loading logic
@@ -96,8 +96,8 @@ python-language-server/
 **Goal:** Create reusable components for both demos
 
 **Tasks:**
-1. Create `demos/shared/editor/MonacoEditor.ts`
-   - Initialize Monaco Editor
+1. Create `demos/shared/editor/CodeMirrorEditor.ts`
+   - Initialize CodeMirror 6 editor
    - Configure Python language
    - Handle code changes
    - Display diagnostics
@@ -129,7 +129,7 @@ python-language-server/
 
 **Tasks:**
 1. Create `demos/server-demo/index.html`
-   - HTML page with Monaco Editor
+   - HTML page with CodeMirror editor
    - Port selector dropdown
    - Problems panel
 
@@ -171,7 +171,7 @@ Pyright LSP (Node.js process)
 
 **Tasks:**
 1. Create `demos/browser-demo/index.html`
-   - HTML page with Monaco Editor
+   - HTML page with CodeMirror editor
    - Port selector dropdown
    - Problems panel
 
@@ -313,13 +313,92 @@ export const StubSelector: React.FC<StubSelectorProps> = ({
 };
 ```
 
-### 3. Server Demo Client
+### 3. CodeMirrorEditor (Shared)
+
+```typescript
+// demos/shared/editor/CodeMirrorEditor.ts
+
+import { EditorView, basicSetup } from 'codemirror';
+import { python } from '@codemirror/lang-python';
+import { linter, Diagnostic } from '@codemirror/lint';
+import { Extension } from '@codemirror/state';
+
+export interface EditorDiagnostic {
+  line: number;
+  column: number;
+  message: string;
+  severity: 'error' | 'warning' | 'info';
+}
+
+export class CodeMirrorEditor {
+  private view: EditorView;
+  private diagnostics: EditorDiagnostic[] = [];
+  
+  constructor(
+    parent: HTMLElement,
+    initialCode: string = '',
+    onChange?: (code: string) => void
+  ) {
+    const extensions: Extension[] = [
+      basicSetup,
+      python(),
+      EditorView.updateListener.of((update) => {
+        if (update.docChanged && onChange) {
+          onChange(update.state.doc.toString());
+        }
+      }),
+      linter(() => this.getLinterDiagnostics())
+    ];
+    
+    this.view = new EditorView({
+      doc: initialCode,
+      extensions,
+      parent
+    });
+  }
+  
+  setDiagnostics(diagnostics: EditorDiagnostic[]) {
+    this.diagnostics = diagnostics;
+    // Trigger linter update
+    this.view.dispatch({});
+  }
+  
+  private getLinterDiagnostics(): Diagnostic[] {
+    return this.diagnostics.map(diag => ({
+      from: this.view.state.doc.line(diag.line + 1).from + diag.column,
+      to: this.view.state.doc.line(diag.line + 1).from + diag.column + 1,
+      severity: diag.severity,
+      message: diag.message
+    }));
+  }
+  
+  getValue(): string {
+    return this.view.state.doc.toString();
+  }
+  
+  setValue(code: string) {
+    this.view.dispatch({
+      changes: {
+        from: 0,
+        to: this.view.state.doc.length,
+        insert: code
+      }
+    });
+  }
+  
+  destroy() {
+    this.view.destroy();
+  }
+}
+```
+
+### 4. Server Demo Client
 
 ```typescript
 // demos/server-demo/client.ts
 
 import { StubManager } from '../shared/stubs/StubManager';
-import { MonacoEditor } from '../shared/editor/MonacoEditor';
+import { CodeMirrorEditor } from '../shared/editor/CodeMirrorEditor';
 
 class ServerLSPClient {
   private ws: WebSocket;
@@ -356,7 +435,7 @@ class ServerLSPClient {
 // demos/browser-demo/client.ts
 
 import { StubManager } from '../shared/stubs/StubManager';
-import { MonacoEditor } from '../shared/editor/MonacoEditor';
+import { CodeMirrorEditor } from '../shared/editor/CodeMirrorEditor';
 
 class BrowserLSPClient {
   private connection: MessageConnection;
@@ -413,6 +492,13 @@ class BrowserLSPClient {
     "webpack": "^5.0.0",
     "webpack-cli": "^5.0.0",
     "webpack-dev-server": "^4.0.0"
+  },
+  "dependencies": {
+    "codemirror": "^6.0.0",
+    "@codemirror/lang-python": "^6.0.0",
+    "@codemirror/lint": "^6.0.0",
+    "@codemirror/state": "^6.0.0",
+    "@codemirror/view": "^6.0.0"
   }
 }
 ```
@@ -420,7 +506,7 @@ class BrowserLSPClient {
 ## DRY Principles Applied
 
 1. **Shared StubManager:** Both demos use same stub loading logic
-2. **Shared MonacoEditor:** Editor setup and configuration shared
+2. **Shared CodeMirrorEditor:** Editor setup and configuration shared
 3. **Shared StubSelector:** UI component reused
 4. **Shared Layouts:** Common page structure
 5. **Shared Stub Data:** JSON files used by both demos
@@ -456,11 +542,28 @@ class BrowserLSPClient {
 - May require modifications to accept stub updates
 - Alternative: restart server with new stubs
 
-### 4. Monaco Editor
+### 4. CodeMirror Editor
 
-- CDN: https://cdn.jsdelivr.net/npm/monaco-editor@latest/
-- Python language support built-in
-- LSP integration requires custom setup
+**Why CodeMirror instead of Monaco:**
+- **Size:** ~200KB vs Monaco's ~2MB
+- **Modularity:** Install only needed features
+- **Extensibility:** Easier to customize and extend
+- **Performance:** Faster initialization and lower memory usage
+- **Integration:** Better suited for embedded use cases
+
+**Implementation:**
+- CDN: https://cdn.jsdelivr.net/npm/codemirror@6/
+- Python language support via @codemirror/lang-python
+- Diagnostics via @codemirror/lint
+- LSP integration via custom extension
+- Syntax highlighting and code folding built-in
+
+**CodeMirror 6 Features:**
+- Modern architecture with immutable state
+- Better mobile support
+- Accessibility features
+- Customizable themes
+- Plugin system for extensions
 
 ## Success Criteria
 
