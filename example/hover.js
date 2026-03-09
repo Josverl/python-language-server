@@ -67,7 +67,7 @@ function createHoverExtension(lspClient, documentUri) {
                 pos: pos,
                 end: pos,
                 above: true,
-                create: () => tooltip
+                create: () => ({ dom: tooltip })
             };
         } catch (error) {
             console.error('Error fetching hover information:', error);

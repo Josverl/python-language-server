@@ -6,14 +6,13 @@
     <title>CodeMirror with Pyright LSP - Hover Tooltips Demo</title>
     <link rel="stylesheet" href="styles.css">
     
-    <!-- CodeMirror 6 -->
+    <!-- CodeMirror 6 via esm.sh (handles peer dependency deduplication) -->
     <script type="module">
-        import { EditorView, basicSetup } from 'https://cdn.jsdelivr.net/npm/codemirror@6.0.1/dist/index.js';
-        import { python } from 'https://cdn.jsdelivr.net/npm/@codemirror/lang-python@6.1.6/dist/index.js';
-        import { hoverTooltip } from 'https://cdn.jsdelivr.net/npm/@codemirror/view@6.26.3/dist/index.js';
+        import { EditorView, basicSetup, hoverTooltip, StateEffect } from 'https://esm.sh/codemirror@6.0.1';
+        import { python } from 'https://esm.sh/@codemirror/lang-python@6.1.6';
         
-        // Make CodeMirror available globally
-        window.CodeMirror = { EditorView, basicSetup, python, hoverTooltip };
+        // Make CodeMirror available globally for classic scripts (client.js, hover.js)
+        window.CodeMirror = { EditorView, basicSetup, hoverTooltip, StateEffect, python };
     </script>
 </head>
 <body>

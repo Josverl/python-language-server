@@ -112,6 +112,30 @@ Messages are translated between WebSocket and the Language Server Protocol, enab
 - `build.sh` - Build script for Linux x64
 - `build-all.sh` - Build script for all platforms
 - `output/` - Build output directory (generated)
+- `example/` - CodeMirror hover tooltip demo
+
+## Example: Hover Tooltips with CodeMirror
+
+The [`example/`](example/) directory contains a complete browser-based demo showing how to integrate this WebSocket bridge with [CodeMirror 6](https://codemirror.net/) to provide hover tooltips with Python type information and documentation.
+
+The demo includes:
+- **`client.js`** — LSP client over WebSocket (handles initialize, didOpen, hover, etc.)
+- **`hover.js`** — CodeMirror 6 hover extension that fetches type info from Pyright
+- **`styles.css`** — Tooltip styling with solid background and proper contrast
+- **`index.html`** — Self-contained demo page with sample Python code
+
+To run the demo:
+```bash
+# 1. Start the bridge
+npm start -- --port 9011 --bot-root /path/to/project
+
+# 2. Serve the demo files
+cd example && python3 -m http.server 8000
+
+# 3. Open http://localhost:8000 and click "Connect to LSP Server"
+```
+
+See [example/README.md](example/README.md) for full documentation.
 
 ## License
 
